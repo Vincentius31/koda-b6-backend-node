@@ -1,8 +1,11 @@
+import "dotenv/config"
 import express from "express"
 import { constants } from "node:http2"
-import usersRouter from "./routes/users.router.js"
+import authRouter from "./routes/auth.router.js"
+import adminRouter from "./routes/admin.router.js"
 
 const app = express()
+const PORT = process.env.PORT || 8888
 
 app.use(express.json())
 
@@ -13,8 +16,9 @@ app.get("/", function (req, res) {
   })
 })
 
-app.use("/users", usersRouter)
+app.use("/auth", authRouter)
+app.use("/admin", adminRouter)
 
-app.listen(8888, function () {
-  console.log("App listening on port 8888")
+app.listen(PORT, function () {
+  console.log(`App listening on port ${PORT}`)
 })
