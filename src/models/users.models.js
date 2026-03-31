@@ -1,81 +1,29 @@
+import pool from "../db/index.js"
+
 /**
  * @typedef {Object} User
- * @property {number} id 
+ * @property {number} id_user
+ * @property {number} roles_id
+ * @property {string} fullname
  * @property {string} email
  * @property {string} password
+ * @property {string} address
+ * @property {string} phone
+ * @property {string} profile_picture
  */
 
 /**
- * @typedef {Object} PaginationInfo
- * @property {number} currentPage 
- * @property {number} limit 
- * @property {number} totalUsers 
- * @property {number} totalPages
- * @property {boolean} hasNextPage 
- * @property {boolean} hasPrevPage 
+ * Find user by email
+ * @param {string} email
+ * @returns {Promise<User|null>}
  */
-
-/**
- * @typedef {Object} PaginatedResult
- * @property {User[]} data 
- * @property {PaginationInfo} pagination
- */
-
-/**
- * @type {User[]}
- */
-export const usersData = [
-  {
-    id: 1,
-    email: "user1@example.com",
-    password: "pass123"
-  },
-  {
-    id: 2,
-    email: "user2@example.com",
-    password: "pass123"
-  },
-  {
-    id: 3,
-    email: "user3@example.com",
-    password: "pass123"
-  },
-  {
-    id: 4,
-    email: "user4@example.com",
-    password: "pass123"
-  },
-  {
-    id: 5,
-    email: "user5@example.com",
-    password: "pass123"
-  },
-  {
-    id: 6,
-    email: "user6@example.com",
-    password: "pass123"
-  },
-  {
-    id: 7,
-    email: "user7@example.com",
-    password: "pass123"
-  },
-  {
-    id: 8,
-    email: "user8@example.com",
-    password: "pass123"
-  },
-  {
-    id: 9,
-    email: "user9@example.com",
-    password: "pass123"
-  },
-  {
-    id: 10,
-    email: "user10@example.com",
-    password: "pass123"
-  }
-]
+export async function findUserByEmail(email) {
+  const result = await pool.query(
+    "SELECT * FROM users WHERE email = $1",
+    [email]
+  )
+  return result.rows[0] || null
+}
 
 /**
  * @returns {User[]} 
