@@ -95,20 +95,33 @@ export async function createUser(data) {
 }
 
 /**
- * @param {number} id 
- * @param {Partial<User>} data 
- * @returns {User|null} 
+ * Update user by id
+ * @param {number} id_user
+ * @param {Object} data
+ * @returns {Promise<User|null>}
  */
-export function updateUser(id, data) {
-  const foundIndex = usersData.findIndex(user => user.id === id)
-  if (foundIndex === -1) {
-    return null
+export async function updateUser(id_user, data) {
+  const fields = []
+  const values = [id_user]
+  let paramCount = 2
+
+  const allowedFields = ["fullname", "email", "password", "roles_id", "address", "phone", "profile_picture"]
+
+  for (const key of allowedFields) {
+    if (data[key] !== undefined) {
+      fields.push(`${key} = $${paramCount}`)
+      values.push(data[key])
+      paramCount++
+    }
   }
-  usersData[foundIndex] = {
-    ...usersData[foundIndex],
-    ...data
+
+  if (fields.length === 0) {
+    return getUserById(id_user)
   }
-  return usersData[foundIndex]
+
+  const query = `UPDATE users SET ${fields.join(", ")} WHERE id_user = $1 RETURNING *`
+  const result = await pool.query(query, values)
+  return result.rows[0] || null
 }
 
 /**
