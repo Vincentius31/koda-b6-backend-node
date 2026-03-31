@@ -41,3 +41,23 @@ export async function getRecommendedProducts() {
   const result = await pool.query(query)
   return result.rows
 }
+
+/**
+ * Get latest reviews (5 most recent)
+ * @returns {Promise<ReviewLanding[]>}
+ */
+export async function getLatestReviews() {
+  const query = `
+    SELECT 
+      u.fullname AS fullname, 
+      u.profile_picture AS profile_picture,
+      r.messages AS messages, 
+      r.rating AS rating
+    FROM review r
+    JOIN users u ON r.user_id = u.id_user
+    ORDER BY r.id_review DESC
+    LIMIT 5
+  `
+  const result = await pool.query(query)
+  return result.rows
+}
