@@ -7,144 +7,223 @@ import * as userModel from "../models/users.model.js"
  */
 
 /**
+ * Get all users or paginated users
  * @param {Request} req
  * @param {Response} res
- * @returns {void}
- * 
+ * @returns {Promise<void>}
  */
-export function getAllUsers(req, res) {
-    const page = parseInt(req.query.page) || 1
-    const limit = parseInt(req.query.limit) || 5
+export async function getAllUsers(req, res) {
+    try {
+        const page = parseInt(req.query.page) || 1
+        const limit = parseInt(req.query.limit) || 5
 
-    if (req.query.page || req.query.limit) {
-        const result = userModel.getUsersPaginated(page, limit)
+        if (req.query.page || req.query.limit) {
+            const result = await userModel.getUsersPaginated(page, limit)
 
-        if (page > result.pagination.totalPages) {
-            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
-                success: false,
-                message: `Page ${page} not found. Total pages: ${result.pagination.totalPages}`,
-                pagination: result.pagination
+            if (page > result.pagination.totalPages && result.pagination.totalUsers > 0) {
+                return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                    success: false,
+                    message: `Page ${page} not found. Total pages: ${result.pagination.totalPages}`,
+                    pagination: result.pagination
+                })
+            }
+
+            return res.status(constants.HTTP_STATUS_OK).json({
+                success: true,
+                ...result
             })
         }
 
-        return res.status(constants.HTTP_STATUS_OK).json({
+        const users = await userModel.getAllUsers()
+        res.status(constants.HTTP_STATUS_OK).json({
             success: true,
-            ...result
+            data: users
+        })
+    } catch (error) {
+        console.error("Get all users error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Internal server error"
         })
     }
-
-    const users = userModel.getAllUsers()
-    res.status(constants.HTTP_STATUS_OK).json({
-        success: true,
-        data: users
-    })
 }
 
 /**
- * 
+ * Get user by ID
  * @param {Request} req
  * @param {Response} res
- * @returns {void}
- * 
+ * @returns {Promise<void>}
  */
-export function getUserById(req, res) {
-    const id = parseInt(req.params.id)
-    const user = userModel.getUserById(id)
+export async function getUserById(req, res) {
+    try {
+        const id = parseInt(req.params.id)
+        const user = await userModel.getUserById(id)
 
-    if (!user) {
-        return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+        if (!user) {
+            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            data: user
+        })
+    } catch (error) {
+        console.error("Get user by id error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
             success: false,
-            message: "User not found"
+            message: "Internal server error"
         })
     }
-
-    res.status(constants.HTTP_STATUS_OK).json({
-        success: true,
-        data: user
-    })
 }
 
 /**
- * 
- * @param {Request} req 
+ * Create new user
+ * @param {Request} req
  * @param {Response} res
- * @returns {void}
- * 
+ * @returns {Promise<void>}
  */
-export function createUser(req, res) {
-    const { email, password } = req.body
+export async function createUser(req, res) {
+    try {
+        const { fullname, email, password, roles_id, address, phone, profile_picture } = req.body
 
-    if (!email || !password) {
-        return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+        if (!fullname || !email || !password) {
+            return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+                success: false,
+                message: "Fullname, email, and password are required"
+            })
+        }
+
+        // Check if email already exists
+        const existingUser = await userModel.findUserByEmail(email)
+        if (existingUser) {
+            return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+                success: false,
+                message: "Email already exists"
+            })
+        }
+
+        const newUser = await userModel.createUser({
+            fullname,
+            email,
+            password,
+            roles_id,
+            address,
+            phone,
+            profile_picture
+        })
+
+        res.status(constants.HTTP_STATUS_CREATED).json({
+            success: true,
+            message: "User created successfully",
+            data: newUser
+        })
+    } catch (error) {
+        console.error("Create user error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
             success: false,
-            message: "Email and password are required"
+            message: "Internal server error"
         })
     }
-
-    const newUser = userModel.createUser({ email, password })
-    res.status(constants.HTTP_STATUS_CREATED).json({
-        success: true,
-        message: "User created successfully",
-        data: newUser
-    })
 }
 
 /**
- * 
+ * Update user (partial update)
  * @param {Request} req
- * @param {Response} res 
- * @returns {void}
- * 
+ * @param {Response} res
+ * @returns {Promise<void>}
  */
-export function updateUser(req, res) {
-    const id = parseInt(req.params.id)
-    const { email, password } = req.body
+export async function updateUser(req, res) {
+    try {
+        const id = parseInt(req.params.id)
+        const { fullname, email, password, roles_id, address, phone, profile_picture } = req.body
 
-    const updateData = {}
-    if (email !== undefined) {
-        updateData.email = email
-    }
-    if (password !== undefined) {
-        updateData.password = password
-    }
+        if (email !== undefined) {
+            const existingUser = await userModel.findUserByEmail(email)
+            if (existingUser && existingUser.id_user !== id) {
+                return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+                    success: false,
+                    message: "Email already exists"
+                })
+            }
+        }
 
-    const updatedUser = userModel.updateUser(id, updateData)
+        const updateData = {}
+        if (fullname !== undefined) {
+            updateData.fullname = fullname
+        }
+        if (email !== undefined) {
+            updateData.email = email
+        }
+        if (password !== undefined) {
+            updateData.password = password
+        }
+        if (roles_id !== undefined) {
+            updateData.roles_id = roles_id
+        }
+        if (address !== undefined) {
+            updateData.address = address
+        }
+        if (phone !== undefined) {
+            updateData.phone = phone
+        }
+        if (profile_picture !== undefined){
+            updateData.profile_picture = profile_picture
+        } 
 
-    if (!updatedUser) {
-        return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+        const updatedUser = await userModel.updateUser(id, updateData)
+
+        if (!updatedUser) {
+            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            message: "User updated successfully",
+            data: updatedUser
+        })
+    } catch (error) {
+        console.error("Update user error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
             success: false,
-            message: "User not found"
+            message: "Internal server error"
         })
     }
-
-    res.status(constants.HTTP_STATUS_OK).json({
-        success: true,
-        message: "User updated successfully",
-        data: updatedUser
-    })
 }
 
 /**
- * 
+ * Delete user
  * @param {Request} req
- * @param {Response} res 
- * @returns {void}
- * 
+ * @param {Response} res
+ * @returns {Promise<void>}
  */
-export function deleteUser(req, res) {
-    const id = parseInt(req.params.id)
-    const deletedUser = userModel.deleteUser(id)
+export async function deleteUser(req, res) {
+    try {
+        const id = parseInt(req.params.id)
+        const deletedUser = await userModel.deleteUser(id)
 
-    if (!deletedUser) {
-        return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+        if (!deletedUser) {
+            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            message: "User deleted successfully",
+            data: deletedUser
+        })
+    } catch (error) {
+        console.error("Delete user error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
             success: false,
-            message: "User not found"
+            message: "Internal server error"
         })
     }
-
-    res.status(constants.HTTP_STATUS_OK).json({
-        success: true,
-        message: "User deleted successfully",
-        data: deletedUser
-    })
 }
