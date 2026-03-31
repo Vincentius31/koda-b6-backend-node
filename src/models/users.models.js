@@ -35,19 +35,25 @@ export async function getAllUsers() {
 }
 
 /**
- * @param {number} [page=1]
- * @param {number} [limit=5]
- * @returns {PaginatedResult}
+ * Get users with pagination
+ * @param {number} page
+ * @param {number} limit
+ * @returns {Promise<Object>}
  */
-export function getUsersPaginated(page = 1, limit = 5) {
-  const startIndex = (page - 1) * limit
-  const endIndex = startIndex + limit
-  const paginatedUsers = usersData.slice(startIndex, endIndex)
-  const totalUsers = usersData.length
+export async function getUsersPaginated(page = 1, limit = 5) {
+  const offset = (page - 1) * limit
+  
+  const countResult = await pool.query("SELECT COUNT(*) as total FROM users")
+  const totalUsers = parseInt(countResult.rows[0].total)
   const totalPages = Math.ceil(totalUsers / limit)
-
+  
+  const result = await pool.query(
+    "SELECT * FROM users ORDER BY id_user ASC LIMIT $1 OFFSET $2",
+    [limit, offset]
+  )
+  
   return {
-    data: paginatedUsers,
+    data: result.rows,
     pagination: {
       currentPage: page,
       limit: limit,
