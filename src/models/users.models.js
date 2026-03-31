@@ -125,14 +125,14 @@ export async function updateUser(id_user, data) {
 }
 
 /**
- * @param {number} id 
- * @returns {User|null}
+ * Delete user by id
+ * @param {number} id_user
+ * @returns {Promise<User|null>}
  */
-export function deleteUser(id) {
-  const foundIndex = usersData.findIndex(user => user.id === id)
-  if (foundIndex === -1) {
-    return null
-  }
-  const deletedUser = usersData.splice(foundIndex, 1)
-  return deletedUser[0]
+export async function deleteUser(id_user) {
+  const result = await pool.query(
+    "DELETE FROM users WHERE id_user = $1 RETURNING *",
+    [id_user]
+  )
+  return result.rows[0] || null
 }
