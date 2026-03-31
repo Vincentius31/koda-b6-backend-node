@@ -79,18 +79,19 @@ export async function getUserById(id_user) {
 }
 
 /**
- * @param {User} data
- * @param {string} data.email
- * @param {string} data.password
- * @returns {User}
+ * Create new user
+ * @param {Object} data
+ * @returns {Promise<User>}
  */
-export function createUser(data) {
-  const newUser = {
-    id: usersData.length > 0 ? Math.max(...usersData.map(u => u.id)) + 1 : 1,
-    ...data
-  }
-  usersData.push(newUser)
-  return newUser
+export async function createUser(data) {
+  const { fullname, email, password, roles_id = null, address = null, phone = null, profile_picture = null } = data
+  const result = await pool.query(
+    `INSERT INTO users (fullname, email, password, roles_id, address, phone, profile_picture)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [fullname, email, password, roles_id, address, phone, profile_picture]
+  )
+  return result.rows[0]
 }
 
 /**
