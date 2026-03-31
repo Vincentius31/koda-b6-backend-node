@@ -2,8 +2,10 @@
   "name": "koda-b6-backend-node",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/main.js",
   "scripts": {
+    "dev": "node --env-file=.env --watch src/main.js",
+    "start": "node --env-file=.env src/main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -13,7 +15,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/Vincentius31/koda-b6-backend-node/issues"
   },
