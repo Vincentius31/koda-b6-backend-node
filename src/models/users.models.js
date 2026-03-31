@@ -26,10 +26,12 @@ export async function findUserByEmail(email) {
 }
 
 /**
- * @returns {User[]} 
+ * Get all users
+ * @returns {Promise<User[]>}
  */
-export function getAllUsers() {
-  return usersData
+export async function getAllUsers() {
+  const result = await pool.query("SELECT * FROM users ORDER BY id_user ASC")
+  return result.rows
 }
 
 /**
