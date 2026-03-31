@@ -42,16 +42,16 @@ export async function getAllUsers() {
  */
 export async function getUsersPaginated(page = 1, limit = 5) {
   const offset = (page - 1) * limit
-  
+
   const countResult = await pool.query("SELECT COUNT(*) as total FROM users")
   const totalUsers = parseInt(countResult.rows[0].total)
   const totalPages = Math.ceil(totalUsers / limit)
-  
+
   const result = await pool.query(
     "SELECT * FROM users ORDER BY id_user ASC LIMIT $1 OFFSET $2",
     [limit, offset]
   )
-  
+
   return {
     data: result.rows,
     pagination: {
@@ -66,11 +66,16 @@ export async function getUsersPaginated(page = 1, limit = 5) {
 }
 
 /**
- * @param {number} id
- * @returns {User|undefined}
+ * Get user by id
+ * @param {number} id_user
+ * @returns {Promise<User|null>}
  */
-export function getUserById(id) {
-  return usersData.find(user => user.id === id)
+export async function getUserById(id_user) {
+  const result = await pool.query(
+    "SELECT * FROM users WHERE id_user = $1",
+    [id_user]
+  )
+  return result.rows[0] || null
 }
 
 /**
