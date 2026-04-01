@@ -1,12 +1,14 @@
 import { Router } from "express"
-import * as userController from "../controllers/users.controller.js"
+import * as cartController from "../controllers/cart.controller"
+import auth from "../middlewares/auth.middleware"
 
 const userRouter = Router()
 
-userRouter.get("/", userController.getAllUsers)
-userRouter.get("/:id", userController.getUserById)
-userRouter.post("/", userController.createUser)
-userRouter.patch("/:id", userController.updateUser)
-userRouter.delete("/:id", userController.deleteUser)
+userRouter.use(auth)
+
+userRouter.get("/cart", cartController.getUserCart)
+userRouter.post("/cart", cartController.createCart)
+userRouter.patch("/cart/:id", cartController.updateCart)
+userRouter.delete("/cart/:id", cartController.deleteCart)
 
 export default userRouter
