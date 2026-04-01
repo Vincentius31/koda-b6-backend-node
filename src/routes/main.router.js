@@ -15,5 +15,6 @@ mainRouter.get("/landing/recommended-products", mainController.getRecommendedPro
 mainRouter.get("/landing/reviews", mainController.getLatestReviews)
 mainRouter.get("/products", mainController.getProducts)
 mainRouter.get("/products/promos", mainController.getPromos)
+mainRouter.get("/detail-product/:id", mainController.getProductDetail)
 
 export default mainRouter
