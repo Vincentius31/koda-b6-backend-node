@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { constants } from "node:http2"
-import * as mainController from "../controllers/main.controller"
+import * as mainController from "../controllers/main.controller.js"
 
 const mainRouter = Router()
 
