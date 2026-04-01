@@ -102,12 +102,3 @@ export async function deleteDiscount(id_discount) {
   )
   return result.rows[0] || null
 }
-
-/**
- * Get all promos for landing page
- * @returns {Promise<Discount[]>}
- */
-export async function getPromos() {
-  const result = await pool.query("SELECT * FROM discount ORDER BY id_discount ASC")
-  return result.rows
-}
