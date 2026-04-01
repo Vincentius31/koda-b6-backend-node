@@ -216,3 +216,110 @@ export async function getProductCatalog(params) {
     }
   }
 }
+
+/**
+ * @typedef {Object} DetailSize
+ * @property {number} id_size
+ * @property {string} size_name
+ * @property {number} additional_price
+ */
+
+/**
+ * @typedef {Object} DetailVariant
+ * @property {number} id_variant
+ * @property {string} variant_name
+ * @property {number} additional_price
+ */
+
+/**
+ * @typedef {Object} ProductDetail
+ * @property {number} id_product
+ * @property {string} name
+ * @property {string} desc
+ * @property {number} price
+ * @property {number} discount_rate
+ * @property {number} discount_price
+ * @property {number} rating
+ * @property {number} total_review
+ * @property {string[]} images
+ * @property {DetailSize[]} sizes
+ * @property {DetailVariant[]} variants
+ */
+
+/**
+ * Get full product detail by ID
+ * @param {number} id_product
+ * @returns {Promise<ProductDetail|null>}
+ */
+export async function getFullDetailByID(id_product) {
+  // Get main product info
+  const productQuery = `
+    SELECT 
+      p.id_product, p.name, p.desc, p.price,
+      COALESCE(d.discount_rate, 0) as discount_rate,
+      CAST(p.price - (p.price * COALESCE(d.discount_rate, 0)) AS INT) as discount_price,
+      COALESCE(AVG(rv.rating), 0) as rating,
+      COUNT(rv.id_review) as total_review
+    FROM products p
+    LEFT JOIN discount d ON p.id_product = d.product_id
+    LEFT JOIN review rv ON p.id_product = rv.product_id
+    WHERE p.id_product = $1
+    GROUP BY p.id_product, d.discount_rate
+  `
+  const productResult = await pool.query(productQuery, [id_product])
+  
+  if (productResult.rows.length === 0) {
+    return null
+  }
+
+  const product = productResult.rows[0]
+
+  // Get images
+  const imagesResult = await pool.query(
+    "SELECT path FROM product_images WHERE product_id = $1",
+    [id_product]
+  )
+  product.images = imagesResult.rows.map(row => row.path)
+
+  // Get sizes
+  const sizesResult = await pool.query(
+    "SELECT id_size, size_name, additional_price FROM product_size WHERE product_id = $1",
+    [id_product]
+  )
+  product.sizes = sizesResult.rows
+
+  // Get variants
+  const variantsResult = await pool.query(
+    "SELECT id_variant, variant_name, additional_price FROM product_variant WHERE product_id = $1",
+    [id_product]
+  )
+  product.variants = variantsResult.rows
+
+  return product
+}
+
+/**
+ * Get random recommended products (excluding current product)
+ * @param {number} excludeID
+ * @param {number} limit
+ * @returns {Promise<ProductCatalog[]>}
+ */
+export async function getRandomRecommended(excludeID, limit = 15) {
+  const query = `
+    SELECT 
+      p.id_product, p.name, p.desc, p.price,
+      COALESCE(d.discount_rate, 0) as discount_rate,
+      CAST(p.price - (p.price * COALESCE(d.discount_rate, 0)) AS INT) as discount_price,
+      COALESCE(AVG(rv.rating), 0) as rating,
+      COALESCE((SELECT path FROM product_images WHERE product_id = p.id_product LIMIT 1), '') as image_path
+    FROM products p
+    LEFT JOIN discount d ON p.id_product = d.product_id
+    LEFT JOIN review rv ON p.id_product = rv.product_id
+    WHERE p.is_active = TRUE AND p.id_product != $1
+    GROUP BY p.id_product, d.discount_rate
+    ORDER BY RANDOM() 
+    LIMIT $2
+  `
+  const result = await pool.query(query, [excludeID, limit])
+  return result.rows
+}
