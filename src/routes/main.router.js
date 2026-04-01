@@ -1,5 +1,6 @@
 import { Router } from "express"
-import * as landingController from "../controllers/landing.controller.js"
+import { constants } from "node:http2"
+import * as mainController from "../controllers/main.controller"
 
 const mainRouter = Router()
 
@@ -10,7 +11,9 @@ mainRouter.get("/", function (req, res) {
   })
 })
 
-mainRouter.get("/landing/recommended-products", landingController.getRecommendedProducts)
-mainRouter.get("/landing/reviews", landingController.getLatestReviews)
+mainRouter.get("/landing/recommended-products", mainController.getRecommendedProducts)
+mainRouter.get("/landing/reviews", mainController.getLatestReviews)
+mainRouter.get("/products", mainController.getProducts)
+mainRouter.get("/products/promos", mainController.getPromos)
 
 export default mainRouter
