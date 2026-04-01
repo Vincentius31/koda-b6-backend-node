@@ -113,3 +113,50 @@ export async function getPromos(req, res) {
     })
   }
 }
+
+/**
+ * Get product detail by ID
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+export async function getProductDetail(req, res) {
+  try {
+    const id = parseInt(req.params.id)
+
+    if (isNaN(id)) {
+      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+        success: false,
+        message: "Invalid Product ID!"
+      })
+    }
+
+    const product = await productsModel.getFullDetailByID(id)
+
+    if (!product) {
+      return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+        success: false,
+        message: "Product Not Found!"
+      })
+    }
+
+    // Get random recommended products
+    const recommended = await productsModel.getRandomRecommended(id, 15)
+
+    res.status(constants.HTTP_STATUS_OK).json({
+      success: true,
+      message: "Product Detail Fetched Successfully!",
+      data: {
+        product,
+        recommended
+      }
+    })
+  } catch (error) {
+    console.error("Get product detail error:", error)
+    res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to fetch product detail",
+      data: null
+    })
+  }
+}
