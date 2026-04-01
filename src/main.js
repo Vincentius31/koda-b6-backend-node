@@ -9,13 +9,6 @@ const PORT = process.env.PORT || 8888
 
 app.use(express.json())
 
-app.get("/", function (req, res) {
-  res.status(constants.HTTP_STATUS_OK).json({
-    success: true,
-    message: "Backend is running well!"
-  })
-})
-
 app.use("/", mainRouter)
 app.use("/auth", authRouter)
 app.use("/admin", adminRouter)
