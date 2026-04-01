@@ -1,5 +1,7 @@
 import { constants } from "node:http2"
 import * as userModel from "../models/users.models.js"
+import { GenerateHash, VerifyHash } from "../lib/hash.js"
+import { GenerateToken } from "../lib/jwt.js"
 
 /**
  * @typedef {import('express').Request} Request
@@ -38,10 +40,12 @@ export async function register(req, res) {
       })
     }
 
+    const hashedPassword = await GenerateHash(password)
+
     const newUser = await userModel.createUser({
       fullname,
       email,
-      password
+      password: hashedPassword
     })
 
     const { password: _, ...userWithoutPassword } = newUser
@@ -86,19 +90,25 @@ export async function login(req, res) {
       })
     }
 
-    if (user.password !== password) {
+    const isValid = await VerifyHash(user.password, password)
+    if (!isValid) {
       return res.status(constants.HTTP_STATUS_UNAUTHORIZED).json({
         success: false,
         message: "Invalid email or password"
       })
     }
 
+    const token = GenerateToken({ id: user.id_user })
+
     const { password: _, ...userWithoutPassword } = user
 
     res.status(constants.HTTP_STATUS_OK).json({
       success: true,
       message: "Login successful",
-      data: userWithoutPassword
+      data: {
+        ...userWithoutPassword,
+        token
+      }
     })
   } catch (error) {
     console.error("Login error:", error)
