@@ -152,26 +152,22 @@ export async function getProductCatalog(params) {
   const limit = 6
   const offset = (page - 1) * limit
 
-  // Build WHERE conditions
   const conditions = ["p.is_active = TRUE"]
   const args = []
   let paramCount = 1
 
-  // Search filter
   if (search) {
     conditions.push(`p.name ILIKE $${paramCount}`)
     args.push(`%${search}%`)
     paramCount++
   }
 
-  // Category filter
   if (category) {
     conditions.push(`c.name_category = $${paramCount}`)
     args.push(category)
     paramCount++
   }
 
-  // Price range filter
   if (min_price && max_price) {
     conditions.push(`p.price BETWEEN $${paramCount} AND $${paramCount + 1}`)
     args.push(min_price, max_price)
@@ -180,7 +176,6 @@ export async function getProductCatalog(params) {
 
   const whereSQL = conditions.join(" AND ")
 
-  // Count total items
   const countQuery = `
     SELECT COUNT(DISTINCT p.id_product) as total
     FROM products p
@@ -192,7 +187,6 @@ export async function getProductCatalog(params) {
   const totalItems = parseInt(countResult.rows[0].total)
   const totalPages = Math.ceil(totalItems / limit)
 
-  // Fetch paginated data
   const fetchQuery = `
     SELECT 
       p.id_product, p.name, p.desc, p.price,
