@@ -21,7 +21,11 @@
   },
   "homepage": "https://github.com/Vincentius31/koda-b6-backend-node#readme",
   "dependencies": {
+    "argon2": "^0.44.0",
     "express": "^5.2.1",
-    "pg": "^8.20.0"
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }
