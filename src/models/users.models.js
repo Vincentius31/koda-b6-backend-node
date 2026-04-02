@@ -136,3 +136,44 @@ export async function deleteUser(id_user) {
   )
   return result.rows[0] || null
 }
+
+/**
+ * Create forgot password request
+ * @param {string} email
+ * @param {number} otpCode
+ * @returns {Promise<Object>}
+ */
+export async function createForgotPasswordRequest(email, otpCode) {
+  const result = await pool.query(
+    `INSERT INTO forgot_password (email, otp_code) VALUES ($1, $2) RETURNING *`,
+    [email, otpCode]
+  )
+  return result.rows[0]
+}
+
+/**
+ * Get forgot password by email and OTP code
+ * @param {string} email
+ * @param {number} otpCode
+ * @returns {Promise<Object|null>}
+ */
+export async function getForgotPasswordByEmailAndCode(email, otpCode) {
+  const result = await pool.query(
+    `SELECT * FROM forgot_password WHERE email = $1 AND otp_code = $2`,
+    [email, otpCode]
+  )
+  return result.rows[0] || null
+}
+
+/**
+ * Delete forgot password by OTP code
+ * @param {number} otpCode
+ * @returns {Promise<number>}
+ */
+export async function deleteForgotPasswordByCode(otpCode) {
+  const result = await pool.query(
+    `DELETE FROM forgot_password WHERE otp_code = $1`,
+    [otpCode]
+  )
+  return result.rowCount
+}
