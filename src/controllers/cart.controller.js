@@ -1,5 +1,5 @@
 import { constants } from "node:http2"
-import * as cartModel from "../models/carts.model.js"
+import * as cartModel from "../models/cart.models.js"
 
 /**
  * @typedef {import('express').Request} Request
