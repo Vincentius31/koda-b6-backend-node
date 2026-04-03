@@ -113,3 +113,13 @@ export async function updateCartQty(id_cart, quantity) {
 export async function deleteCart(id_cart) {
   await pool.query(`DELETE FROM cart WHERE id_cart = $1`, [id_cart])
 }
+
+/**
+ * Clear all cart items by user ID
+ * @param {number} user_id
+ * @returns {Promise<number>}
+ */
+export async function clearCartByUserId(user_id) {
+  const result = await pool.query(`DELETE FROM cart WHERE user_id = $1`, [user_id])
+  return result.rowCount
+}
