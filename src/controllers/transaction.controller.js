@@ -1,4 +1,5 @@
 import { constants } from "node:http2"
+import * as cartModel from "../models/cart.models.js"
 import * as transactionModel from "../models/transaction.models.js"
 
 /**
@@ -376,13 +377,16 @@ export async function deleteTransactionProduct(req, res) {
 
 /**
  * Checkout - create transaction and products using DB transaction, return data, then delete
+ * Clear cart after successful checkout
  * @param {Request} req
  * @param {Response} res
  * @returns {Promise<void>}
  */
 export async function checkout(req, res) {
   try {
-    const { user_id, transaction_number, delivery_method, subtotal, total, payment_method, items } = req.body
+    // Get user_id from auth middleware
+    const userId = res.locals.id
+    const { transaction_number, delivery_method, subtotal, total, payment_method, items } = req.body
 
     // Validate required fields
     if (!transaction_number || !delivery_method || !payment_method || !items) {
@@ -396,7 +400,7 @@ export async function checkout(req, res) {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
         success: false,
-        message: "Please at item to your cart!",
+        message: "Cart cannot be empty!",
         data: null
       })
     }
@@ -419,10 +423,13 @@ export async function checkout(req, res) {
       }
     }
 
+    // Import cart model for clearing cart
+    const cartModel = await import("../models/carts.model.js")
+
     // Perform checkout with DB transaction
     const result = await transactionModel.checkout(
       {
-        user_id,
+        user_id: userId,
         transaction_number,
         delivery_method,
         subtotal,
@@ -433,9 +440,12 @@ export async function checkout(req, res) {
       items
     )
 
+    // Clear user's cart after successful checkout
+    await cartModel.clearCartByUserId(userId)
+
     res.status(constants.HTTP_STATUS_CREATED).json({
       success: true,
-      message: "Checkout successful. Transaction data returned and deleted.",
+      message: "Checkout successful. Cart has been cleared.",
       data: result
     })
   } catch (error) {
