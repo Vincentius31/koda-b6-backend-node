@@ -3,12 +3,12 @@ import * as userController from "../controllers/users.controller.js"
 import * as transactionController from "../controllers/transaction.controller.js"
 import * as dashboardController from "../controllers/dashboard.controller.js"
 import * as adminProductController from "../controllers/admin-product.controller.js"
-import auth from "../middlewares/auth.middleware.js"
+import { adminOnly } from "../middlewares/auth.middleware.js"
 import uploadMiddleware, { uploadProfileMiddleware } from "../middlewares/upload,middleware.js"
 
 const adminRouter = Router()
 
-adminRouter.use(auth)
+adminRouter.use(adminOnly)
 
 adminRouter.get("/dashboard/sales-category", dashboardController.getSalesCategory)
 adminRouter.get("/dashboard/best-sellers", dashboardController.getBestSellers)
