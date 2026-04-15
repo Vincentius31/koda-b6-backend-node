@@ -1,0 +1,1 @@
+ALTER SEQUENCE transaction_id_transaction_seq RESTART WITH 1;
