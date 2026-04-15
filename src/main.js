@@ -10,6 +10,8 @@ const PORT = process.env.PORT || 8888
 
 app.use(express.json())
 
+app.use("/uploads", express.static("uploads"))
+
 app.use("/", mainRouter)
 app.use("/auth", authRouter)
 app.use("/admin", adminRouter)
