@@ -2,6 +2,7 @@ import { constants } from "node:http2"
 import * as productsModel from "../models/products.models.js"
 import * as reviewsModel from "../models/reviews.models.js"
 import * as discountsModel from "../models/discounts.models.js"
+import { getRedis } from "../lib/redis.js"
 
 /**
  * @typedef {import('express').Request} Request
@@ -72,7 +73,23 @@ export async function getProducts(req, res) {
     const min_price = req.query.min_price || ""
     const max_price = req.query.max_price || ""
 
+    const cacheKey = `products:${page}:${search}:${category}:${min_price}:${max_price}`
+
+    const redis = await getRedis()
+    const cachedData = await redis.get(cacheKey)
+
+    if (cachedData) {
+      const result = JSON.parse(cachedData)
+      return res.status(constants.HTTP_STATUS_OK).json({
+        success: true,
+        message: "Fetch Products Successfully! (from cache)",
+        data: result
+      })
+    }
+
     const result = await productsModel.getProductCatalog({ page, search, category, min_price, max_price })
+
+    await redis.setEx(cacheKey, 900, JSON.stringify(result))
 
     res.status(constants.HTTP_STATUS_OK).json({
       success: true,
