@@ -66,13 +66,16 @@ export async function getUsersPaginated(page = 1, limit = 5) {
 }
 
 /**
- * Get user by id
+ * Get user by id with role info
  * @param {number} id_user
  * @returns {Promise<User|null>}
  */
 export async function getUserById(id_user) {
   const result = await pool.query(
-    "SELECT * FROM users WHERE id_user = $1",
+    `SELECT u.*, r.name_roles as role_name 
+     FROM users u 
+     LEFT JOIN roles r ON u.roles_id = r.id_roles 
+     WHERE u.id_user = $1`,
     [id_user]
   )
   return result.rows[0] || null
