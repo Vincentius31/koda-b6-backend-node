@@ -81,11 +81,13 @@ export async function getUserById(id_user) {
 /**
  * Create new user
  * @param {Object} data
+ * @param {import('pg').PoolClient} [client]
  * @returns {Promise<User>}
  */
-export async function createUser(data) {
+export async function createUser(data, client = null) {
+  const queryExecutor = client || pool
   const { fullname, email, password, roles_id = null, address = null, phone = null, profile_picture = null } = data
-  const result = await pool.query(
+  const result = await queryExecutor.query(
     `INSERT INTO users (fullname, email, password, roles_id, address, phone, profile_picture)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
