@@ -96,6 +96,19 @@ export async function getUserCart(user_id) {
 }
 
 /**
+ * Get cart item by ID
+ * @param {number} id_cart
+ * @returns {Promise<Cart|null>}
+ */
+export async function getCartById(id_cart) {
+  const result = await pool.query(
+    "SELECT * FROM cart WHERE id_cart = $1",
+    [id_cart]
+  )
+  return result.rows[0] || null
+}
+
+/**
  * Update cart quantity
  * @param {number} id_cart
  * @param {number} quantity
