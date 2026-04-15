@@ -15,6 +15,8 @@ import { GenerateToken } from "../lib/jwt.js"
  * @returns {Promise<void>}
  */
 export async function register(req, res) {
+  const client = await pool.connect()
+
   try {
     const { fullname, email, password, confirmPassword } = req.body
 
@@ -42,11 +44,26 @@ export async function register(req, res) {
 
     const hashedPassword = await GenerateHash(password)
 
+    await client.query("BEGIN")
+
+    const defaultRole = await rolesModel.getRoleByName("user", client)
+
+    if (!defaultRole) {
+      await client.query("ROLLBACK")
+      return res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Default role not found. Please contact administrator."
+      })
+    }
+
     const newUser = await userModel.createUser({
       fullname,
       email,
-      password: hashedPassword
-    })
+      password: hashedPassword,
+      roles_id: defaultRole.id_roles
+    }, client)
+
+    await client.query("COMMIT")
 
     const { password: _, ...userWithoutPassword } = newUser
 
@@ -56,11 +73,14 @@ export async function register(req, res) {
       data: userWithoutPassword
     })
   } catch (error) {
+    await client.query("ROLLBACK")
     console.error("Register error:", error)
     res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Internal server error"
     })
+  } finally {
+    client.release()
   }
 }
 
