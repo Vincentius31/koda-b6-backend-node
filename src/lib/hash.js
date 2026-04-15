@@ -21,3 +21,6 @@ export async function VerifyHash(hash, plainText){
     const isVerified = await argon2.verify(hash, plainText)
     return isVerified
 }
+
+export const hashPassword = GenerateHash
+export const verifyPassword = VerifyHash
