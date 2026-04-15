@@ -1,5 +1,6 @@
 import { constants } from "node:http2"
 import * as userModel from "../models/users.models.js"
+import * as hash from "../lib/hash.js"
 
 /**
  * @typedef {import('express').Request} Request
@@ -224,6 +225,173 @@ export async function deleteUser(req, res) {
         res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
             success: false,
             message: "Internal server error"
+        })
+    }
+}
+
+/**
+ * Get current user profile
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+export async function getProfile(req, res) {
+    try {
+        const id = req.user.id_user
+        const user = await userModel.getUserById(id)
+
+        if (!user) {
+            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            message: "Profile found",
+            data: user
+        })
+    } catch (error) {
+        console.error("Get profile error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Internal server error"
+        })
+    }
+}
+
+/**
+ * Update current user profile
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+export async function updateProfile(req, res) {
+    try {
+        const id = req.user.id_user
+        const { fullname, email, password, address, phone, profile_picture } = req.body
+
+        const updateData = {}
+        if (fullname !== undefined) {
+            updateData.fullname = fullname
+        }
+        if (email !== undefined) {
+            updateData.email = email
+        }
+        if (password !== undefined) {
+            if (password.length < 5) {
+                return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+                    success: false,
+                    message: "password must be at least 5 characters"
+                })
+            }
+            updateData.password = await hash.hashPassword(password)
+        }
+        if (address !== undefined) {
+            updateData.address = address
+        }
+        if (phone !== undefined) {
+            updateData.phone = phone
+        }
+        if (profile_picture !== undefined) {
+            updateData.profile_picture = profile_picture
+        }
+
+        const updatedUser = await userModel.updateUser(id, updateData)
+
+        if (!updatedUser) {
+            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: updatedUser
+        })
+    } catch (error) {
+        console.error("Update profile error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Internal server error"
+        })
+    }
+}
+
+/**
+ * Upload profile picture for current user
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+export async function uploadProfilePicture(req, res) {
+    try {
+        const id = req.user.id_user
+
+        if (!req.file) {
+            return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+                success: false,
+                message: "No file uploaded"
+            })
+        }
+
+        const filename = req.file.filename
+        await userModel.updateUser(id, { profile_picture: filename })
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            message: "Profile picture uploaded successfully",
+            data: { url: "/uploads/users/" + filename }
+        })
+    } catch (error) {
+        console.error("Upload profile picture error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Failed to update profile picture in database"
+        })
+    }
+}
+
+/**
+ * Upload profile picture for specific user (admin)
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+export async function uploadUserProfile(req, res) {
+    try {
+        const id = parseInt(req.params.id)
+
+        if (!req.file) {
+            return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
+                success: false,
+                message: "No file uploaded"
+            })
+        }
+
+        const filename = req.file.filename
+        const updatedUser = await userModel.updateUser(id, { profile_picture: filename })
+
+        if (!updatedUser) {
+            return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        res.status(constants.HTTP_STATUS_OK).json({
+            success: true,
+            message: "Profile picture uploaded successfully",
+            data: { url: "/uploads/users/" + filename }
+        })
+    } catch (error) {
+        console.error("Upload user profile error:", error)
+        res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Failed to update profile picture in database"
         })
     }
 }
