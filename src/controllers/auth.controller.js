@@ -1,7 +1,9 @@
-import { constants } from "node:http2"
+import pool from "../lib/db.js"
 import * as userModel from "../models/users.models.js"
+import * as rolesModel from "../models/roles.models.js"
 import { GenerateHash, VerifyHash } from "../lib/hash.js"
 import { GenerateToken } from "../lib/jwt.js"
+import { BadRequestError, UnauthorizedError, NotFoundError, InternalServerError } from "../lib/AppError.js"
 
 /**
  * @typedef {import('express').Request} Request
@@ -21,25 +23,16 @@ export async function register(req, res) {
     const { fullname, email, password, confirmPassword } = req.body
 
     if (!fullname || !email || !password || !confirmPassword) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Fullname, email, password, and confirm password are required"
-      })
+      throw new BadRequestError("Fullname, email, password, and confirm password are required")
     }
 
     if (password !== confirmPassword) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Password and confirm password do not match"
-      })
+      throw new BadRequestError("Password and confirm password do not match")
     }
 
     const existingUser = await userModel.findUserByEmail(email)
     if (existingUser) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Email already registered"
-      })
+      throw new BadRequestError("Email already registered")
     }
 
     const hashedPassword = await GenerateHash(password)
@@ -50,10 +43,7 @@ export async function register(req, res) {
 
     if (!defaultRole) {
       await client.query("ROLLBACK")
-      return res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Default role not found. Please contact administrator."
-      })
+      throw new InternalServerError("Default role not found. Please contact administrator.")
     }
 
     const newUser = await userModel.createUser({
@@ -67,18 +57,14 @@ export async function register(req, res) {
 
     const { password: _, ...userWithoutPassword } = newUser
 
-    res.status(constants.HTTP_STATUS_CREATED).json({
+    res.status(201).json({
       success: true,
       message: "User registered successfully",
       data: userWithoutPassword
     })
   } catch (error) {
     await client.query("ROLLBACK")
-    console.error("Register error:", error)
-    res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Internal server error"
-    })
+    throw error
   } finally {
     client.release()
   }
@@ -91,52 +77,35 @@ export async function register(req, res) {
  * @returns {Promise<void>}
  */
 export async function login(req, res) {
-  try {
-    const { email, password } = req.body
+  const { email, password } = req.body
 
-    if (!email || !password) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Email and password are required"
-      })
-    }
-
-    const user = await userModel.findUserByEmail(email)
-
-    if (!user) {
-      return res.status(constants.HTTP_STATUS_UNAUTHORIZED).json({
-        success: false,
-        message: "Invalid email or password"
-      })
-    }
-
-    const isValid = await VerifyHash(user.password, password)
-    if (!isValid) {
-      return res.status(constants.HTTP_STATUS_UNAUTHORIZED).json({
-        success: false,
-        message: "Invalid email or password"
-      })
-    }
-
-    const token = GenerateToken({ id: user.id_user })
-
-    const { password: _, ...userWithoutPassword } = user
-
-    res.status(constants.HTTP_STATUS_OK).json({
-      success: true,
-      message: "Login successful",
-      data: {
-        ...userWithoutPassword,
-        token
-      }
-    })
-  } catch (error) {
-    console.error("Login error:", error)
-    res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Internal server error"
-    })
+  if (!email || !password) {
+    throw new BadRequestError("Email and password are required")
   }
+
+  const user = await userModel.findUserByEmail(email)
+
+  if (!user) {
+    throw new UnauthorizedError("Invalid email or password")
+  }
+
+  const isValid = await VerifyHash(user.password, password)
+  if (!isValid) {
+    throw new UnauthorizedError("Invalid email or password")
+  }
+
+  const token = GenerateToken({ id: user.id_user })
+
+  const { password: _, ...userWithoutPassword } = user
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    data: {
+      ...userWithoutPassword,
+      token
+    }
+  })
 }
 
 /**
@@ -146,48 +115,28 @@ export async function login(req, res) {
  * @returns {Promise<void>}
  */
 export async function requestForgotPassword(req, res) {
-  try {
-    const { email } = req.body
+  const { email } = req.body
 
-    if (!email) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Email is required"
-      })
-    }
-
-    // Check if email exists
-    const user = await userModel.findUserByEmail(email)
-    if (!user) {
-      return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
-        success: false,
-        message: "Email is not registered in our system"
-      })
-    }
-
-    // Generate 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000)
-
-    // Save OTP to database
-    await userModel.createForgotPasswordRequest(email, otpCode)
-
-    // Log OTP (in production, send via email)
-    console.log(`OTP for ${email}: ${otpCode}`)
-
-    res.status(constants.HTTP_STATUS_OK).json({
-      success: true,
-      message: "OTP code has been sent to your email",
-      data: {
-        otp_code: otpCode // Remove this in production
-      }
-    })
-  } catch (error) {
-    console.error("Request forgot password error:", error)
-    res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Internal server error"
-    })
+  if (!email) {
+    throw new BadRequestError("Email is required")
   }
+
+  const user = await userModel.findUserByEmail(email)
+  if (!user) {
+    throw new NotFoundError("Email is not registered in our system")
+  }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000)
+  await userModel.createForgotPasswordRequest(email, otpCode)
+  console.log(`OTP for ${email}: ${otpCode}`)
+
+  res.status(200).json({
+    success: true,
+    message: "OTP code has been sent to your email",
+    data: {
+      otp_code: otpCode
+    }
+  })
 }
 
 /**
@@ -197,56 +146,32 @@ export async function requestForgotPassword(req, res) {
  * @returns {Promise<void>}
  */
 export async function resetPassword(req, res) {
-  try {
-    const { email, otp_code, new_password } = req.body
+  const { email, otp_code, new_password } = req.body
 
-    if (!email || !otp_code || !new_password) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Email, OTP code, and new password are required"
-      })
-    }
-
-    if (new_password.length < 5) {
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json({
-        success: false,
-        message: "Password must be at least 5 characters"
-      })
-    }
-
-    // Verify OTP
-    const forgotRequest = await userModel.getForgotPasswordByEmailAndCode(email, otp_code)
-    if (!forgotRequest) {
-      return res.status(constants.HTTP_STATUS_UNAUTHORIZED).json({
-        success: false,
-        message: "Invalid OTP code or email"
-      })
-    }
-
-    // Get user
-    const user = await userModel.findUserByEmail(email)
-    if (!user) {
-      return res.status(constants.HTTP_STATUS_NOT_FOUND).json({
-        success: false,
-        message: "User not found"
-      })
-    }
-
-    // Update password
-    await userModel.updateUser(user.id_user, { password: new_password })
-
-    // Delete used OTP
-    await userModel.deleteForgotPasswordByCode(otp_code)
-
-    res.status(constants.HTTP_STATUS_OK).json({
-      success: true,
-      message: "Password has been updated successfully"
-    })
-  } catch (error) {
-    console.error("Reset password error:", error)
-    res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Internal server error"
-    })
+  if (!email || !otp_code || !new_password) {
+    throw new BadRequestError("Email, OTP code, and new password are required")
   }
+
+  if (new_password.length < 5) {
+    throw new BadRequestError("Password must be at least 5 characters")
+  }
+
+  const forgotRequest = await userModel.getForgotPasswordByEmailAndCode(email, otp_code)
+  if (!forgotRequest) {
+    throw new UnauthorizedError("Invalid OTP code or email")
+  }
+
+  const user = await userModel.findUserByEmail(email)
+  if (!user) {
+    throw new NotFoundError("User not found")
+  }
+
+  await userModel.updateUser(user.id_user, { password: new_password })
+
+  await userModel.deleteForgotPasswordByCode(otp_code)
+
+  res.status(200).json({
+    success: true,
+    message: "Password has been updated successfully"
+  })
 }
